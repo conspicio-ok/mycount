@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Svg, Rect, Path, Line, G, Text as SvgText } from 'react-native-svg';
 
-type Entry = {
+export type Entry = {
 	id: number;
 	gain: number;
 	label?: string;
@@ -32,7 +32,7 @@ const COLORS = {
 const SPACING = 5;
 
 function calculateEntryPositions(entries: Entry[], availableHeight: number, startY: number, gains_total: number)
-: Array<{ entry: Entry; y: number; height: number }>
+	: Array<{ entry: Entry; y: number; height: number }>
 {
 	let currentY = startY - (entries.length - 1) * SPACING / 2;
 	let entries_position: Array<{ entry: Entry; y: number; height: number }> = [];
@@ -46,12 +46,8 @@ function calculateEntryPositions(entries: Entry[], availableHeight: number, star
 	return entries_position;
 }
 
-
-/**
- * Calcule les positions Y pour chaque sortie
- */
 function calculateExpensePositions(expenses: Expense[], availableHeight: number, startY: number, expensesTotal: number)
-: Array<{ expense: Expense; y: number; height: number }>
+	: Array<{ expense: Expense; y: number; height: number }>
 {
 	let currentY = startY;
 	let expenses_position: Array<{ expense: Expense; y: number; height: number }> = [];
@@ -65,62 +61,34 @@ function calculateExpensePositions(expenses: Expense[], availableHeight: number,
 	return expenses_position;
 }
 
-/**
- * Génère le Path SVG pour un flux avec épaisseur constante
- */
-function generateFlowPath(flow: FlowData): string {
-  const { startX, startY, endX, endY, thickness } = flow;
-  const controlX = (startX + endX) / 2;
+function generateFlowPath(flow: FlowData)
+	: string
+{
+	const { startX, startY, endX, endY, thickness } = flow;
+	const controlX = (startX + endX) / 2;
+
+	const topPath = `
+		M ${startX} ${startY}
+		C ${controlX} ${startY}, 
+			${controlX} ${endY}, 
+			${endX} ${endY}
+	`;
   
-  // Courbe du haut
-  const topPath = `
-    M ${startX} ${startY}
-    C ${controlX} ${startY}, 
-      ${controlX} ${endY}, 
-      ${endX} ${endY}
-  `;
-  
-  // Courbe du bas (en sens inverse)
-  const bottomPath = `
-    L ${endX} ${endY + thickness}
-    C ${controlX} ${endY + thickness}, 
-      ${controlX} ${startY + thickness}, 
-      ${startX} ${startY + thickness}
-    Z
-  `;
+	const bottomPath = `
+		L ${endX} ${endY + thickness}
+		C ${controlX} ${endY + thickness}, 
+			${controlX} ${startY + thickness}, 
+			${startX} ${startY + thickness}
+		Z
+	`;
   
   return topPath + bottomPath;
 }
 
-
-
-
-
-const data: { entries: Entry[], expenses: Expense[] } = {
-	entries: [
-		{ id: 1, gain: 20 }
-	],
-	expenses: []
-}
-
-/**
- * Composant CashFlow Sankey
- */
-export default function CashFlow({ x, y }: { x: number; y: number }) {
+export default function CashFlow({ x, y, data }
+	: { x: number; y: number, data: { entries: Entry[], expenses: Expense[]} })
+{
 	const PADDING = 16;
-
-	let data = {
-		entries: [
-			{ id: 1, gain: 200, label: 'Papa' },
-			{ id: 2, gain: 6.19, label: 'Bourse' },
-			{ id: 3, gain: 953.96, label: 'Job' },
-		],
-		expenses: [
-			{ id: 1, cost: 365, duty: true, label: 'Loyer' },
-			{ id: 2, cost: 162, duty: false, label: 'Alimentation' },
-			{ id: 3, cost: 100, duty: false, label: 'Loisirs' },
-		],
-	};
 
 	let total = 0;
 	for (const entry of data.entries)
@@ -232,13 +200,13 @@ export default function CashFlow({ x, y }: { x: number; y: number }) {
         {entryPositions.map((pos) => (
           <G key={`entry-${pos.entry.id}`}>
             <SvgText
-              x={PADDING}
-              y={pos.y + pos.height / 2}
-              fill="black"
-              fontSize={10}
-              textAnchor="middle"
+				x={PADDING + SPACING}
+				y={pos.y + pos.height / 2}
+				fill="black"
+				fontSize={10}
+				textAnchor="start"
             >
-              {pos.entry.label || `${pos.entry.gain}€`}
+				{pos.entry.label || `${pos.entry.gain}€`}
             </SvgText>
           </G>
         ))}
@@ -247,13 +215,13 @@ export default function CashFlow({ x, y }: { x: number; y: number }) {
         {expensePositions.map((pos) => (
           <G key={`expense-${pos.expense.id}`}>
             <SvgText
-              x={x - PADDING}
-              y={pos.y + pos.height / 2}
-              fill="black"
-              fontSize={10}
-              textAnchor="middle"
+				x={x - PADDING - SPACING}
+				y={pos.y + pos.height / 2}
+				fill="black"
+				fontSize={10}
+				textAnchor="end"
             >
-              {pos.expense.label || `${pos.expense.cost}€`}
+				{pos.expense.label || `${pos.expense.cost}€`}
             </SvgText>
           </G>
         ))}
@@ -275,27 +243,9 @@ export default function CashFlow({ x, y }: { x: number; y: number }) {
   );
 }
 
-// const styles = StyleSheet.create({
-// 	cashFlow: {
-// 		backgroundColor: 'rgba(214, 214, 214, 0.5)',
-// 		borderRadius: 12,
-// 		shadowColor: 'rgba(214, 214, 214, 0.8)'
-// 	},
-// });
-
-
 const styles = StyleSheet.create({
   cashFlow: {
     backgroundColor: 'rgba(214, 214, 214, 0.5)',
-    borderRadius: 12,
-  },
-  legend: {
-    marginTop: 10,
-    padding: 10,
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+    borderRadius: 8,
   },
 });
