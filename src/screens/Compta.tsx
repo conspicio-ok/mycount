@@ -1,4 +1,6 @@
+import Card from '@/components/Card';
 import CashFlow from '@/components/CashFlow';
+import Pocket from '@/components/Pocket';
 import { StatusBar } from 'expo-status-bar';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
@@ -15,14 +17,26 @@ export default function Compta() {
 			{ id: 3, cost: 100, duty: false, label: 'Loisirs' },
 		],
 	};
+	
 	return (
 		<View style={styles.container}>
-			<CashFlow
+			<Card
 				x={Dimensions.get('window').width - 40}
-				y={200}
-				data={data}
-			/>
-			<Text>Open up Compta.tsx to start working on your compta!</Text>
+			>
+				<CashFlow
+					x={Dimensions.get('window').width - 56}
+					y={200}
+					data={data}
+				/>
+			</Card>
+			<Card
+				x={Dimensions.get('window').width - 40}
+			>
+				<Pocket
+					label='Caca'
+					pValue={30}
+				/>
+			</Card>
 			<StatusBar style="auto" />
 		</View>
 	);
@@ -33,6 +47,6 @@ const styles = StyleSheet.create({
 		flex: 1,
 		backgroundColor: '#fff',
 		alignItems: 'center',
-		justifyContent: 'center',
+		paddingTop: 16
 	},
 });

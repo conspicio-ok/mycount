@@ -126,12 +126,12 @@ export default function CashFlow({ x, y, data }
 
 	
 	let entries_flow: FlowData[] = []
-	let old_endY = PADDING;
+	let old_endY = 16;
 
 	for (const entry_pos of entryPositions)
 	{
 		entries_flow.push({
-			startX: PADDING,
+			startX: 0,
 			startY: entry_pos.y,
 			endX: budgetLineX - 4,
 			endY: old_endY,
@@ -149,7 +149,7 @@ export default function CashFlow({ x, y, data }
 		expenses_flow.push({
 			startX: budgetLineX + 4,
 			startY: expense_pos.y,
-			endX: x - PADDING,
+			endX: x,
 			endY: old_endY,
 			thickness: expense_pos.height,
 			color: COLORS.expense
@@ -163,68 +163,67 @@ export default function CashFlow({ x, y, data }
 				width={x}
 				height={y}
 				viewBox={`0 0 ${x} ${y}`}
-				style={styles.cashFlow}
 			>
         {/* Ligne budget centrale (verte) */}
-        <Line
-          x1={budgetLineX}
-          y1={PADDING + max_flow / 2}
-          x2={budgetLineX}
-          y2={hasData ? PADDING + availableHeight - max_flow / 2 : y - PADDING}
-          stroke={hasData ? COLORS.budget : COLORS.none}
-          strokeWidth={8}
-          strokeLinecap="round"
-        />
+			<Line
+			x1={budgetLineX}
+			y1={PADDING + max_flow / 2}
+			x2={budgetLineX}
+			y2={hasData ? PADDING + availableHeight - max_flow / 2 : y - PADDING}
+			stroke={hasData ? COLORS.budget : COLORS.none}
+			strokeWidth={8}
+			strokeLinecap="round"
+			/>
         
         {/* Flux entrées → budget */}
-        {entries_flow.map((flow, index) => (
-          <Path
-            key={`entry-flow-${index}`}
-            d={generateFlowPath(flow)}
-            fill={flow.color}
-            opacity={0.6}
-          />
-        ))}
+			{entries_flow.map((flow, index) => (
+			<Path
+				key={`entry-flow-${index}`}
+				d={generateFlowPath(flow)}
+				fill={flow.color}
+				opacity={0.6}
+			/>
+			))}
         
         {/* Flux budget → sorties */}
-        {expenses_flow.map((flow, index) => (
-          <Path
-            key={`expense-flow-${index}`}
-            d={generateFlowPath(flow)}
-            fill={flow.color}
-            opacity={0.6}
-          />
-        ))}
+			{expenses_flow.map((flow, index) => (
+			<Path
+				key={`expense-flow-${index}`}
+				d={generateFlowPath(flow)}
+				fill={flow.color}
+				opacity={0.6}
+			/>
+			))}
         
         {/* Texte entrées (gauche) */}
-        {entryPositions.map((pos) => (
-          <G key={`entry-${pos.entry.id}`}>
-            <SvgText
-				x={PADDING + SPACING}
-				y={pos.y + pos.height / 2}
-				fill="black"
-				fontSize={10}
-				textAnchor="start"
-            >
-				{pos.entry.label || `${pos.entry.gain}€`}
-            </SvgText>
-          </G>
-        ))}
+			{entryPositions.map((pos) => (
+			<G key={`entry-${pos.entry.id}`}>
+				<SvgText
+					x={PADDING + SPACING}
+					y={pos.y + pos.height / 2}
+					fill="black"
+					fontSize={10}
+					textAnchor="start"
+				>
+					{pos.entry.label || `${pos.entry.gain}€`}
+				</SvgText>
+			</G>
+			))}
         
         {/* Texte sorties (droite) */}
-        {expensePositions.map((pos) => (
-          <G key={`expense-${pos.expense.id}`}>
-            <SvgText
-				x={x - PADDING - SPACING}
-				y={pos.y + pos.height / 2}
-				fill="black"
-				fontSize={10}
-				textAnchor="end"
-            >
-				{pos.expense.label || `${pos.expense.cost}€`}
-            </SvgText>
-          </G>
-        ))}
+			{expensePositions.map((pos) => (
+			<G key={`expense-${pos.expense.id}`}>
+				<SvgText
+					x={x - PADDING - SPACING}
+					y={pos.y + pos.height / 2}
+					fill="black"
+					fontSize={10}
+					textAnchor="end"
+				>
+					{pos.expense.label || `${pos.expense.cost}€`}
+				</SvgText>
+			</G>
+			))}
         
         {/* État vide */}
         {!hasData && (
@@ -242,10 +241,3 @@ export default function CashFlow({ x, y, data }
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  cashFlow: {
-    backgroundColor: 'rgba(214, 214, 214, 0.5)',
-    borderRadius: 8,
-  },
-});
