@@ -39,7 +39,7 @@ export default function DepenseCategoryCard({ groupId, label, couleur, onLabelCh
 
 	async function handleAddDepense() {
 		const maxOrdre = depenses.reduce((max, d) => Math.max(max, d.ordre ?? -1), -1);
-		await addDepense(db, 'Nouvelle dépense', groupId, null, maxOrdre + 1);
+		await addDepense(db, 'Nouvelle dépense', groupId, 0, maxOrdre + 1);
 		await loadDepenses();
 		onChange?.();
 	}

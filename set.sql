@@ -11,16 +11,17 @@ CREATE TABLE ACTION (
 	label			VARCHAR(24) NOT NULL,
 	ordre			INTEGER,
 	prix			REAL,
-	nb_part_acquis	REAL,
+	nb_part_acquis	REAL DEFAULT 0,
 	div				REAL,
-	prix_inv		REAL,
-	nb_inv			INTEGER,
+	prix_inv		REAL DEFAULT 0,
+	nb_inv			INTEGER DEFAULT 0,
 	id_profil_inv	INTEGER NOT NULL REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE CASCADE
 );
 
 CREATE TABLE BANNED (
 	id_banned	INTEGER PRIMARY KEY,
-	texte		VARCHAR(24) NOT NULL
+	label		VARCHAR(24) NOT NULL,
+	texte		TEXT
 );
 
 CREATE TABLE BILAN (
@@ -28,8 +29,21 @@ CREATE TABLE BILAN (
 	valeur			REAL,
 	gain			REAL,
 	date			DATE,
-	id_profil_inv	INTEGER NOT NULL REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE CASCADE,
+	label			VARCHAR(24),
+	couleur			CHAR(6),
+	id_profil_inv	INTEGER REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE SET NULL,
 	UNIQUE (id_profil_inv, date)
+);
+
+CREATE TABLE PROJECTION (
+	id_projection	INTEGER PRIMARY KEY,
+	valeur			REAL,
+	gain			REAL,
+	annee			INTEGER,
+	label			VARCHAR(24),
+	couleur			CHAR(6),
+	id_profil_inv	INTEGER REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE SET NULL,
+	UNIQUE (id_profil_inv, annee)
 );
 
 CREATE TABLE DEPENSE_GROUP (
@@ -42,7 +56,7 @@ CREATE TABLE DEPENSE_GROUP (
 CREATE TABLE DEPENSE (
 	id_depense			INTEGER PRIMARY KEY,
 	label				VARCHAR(24) NOT NULL,
-	valeur				REAL,
+	valeur				REAL DEFAULT 0,
 	ordre				INTEGER,
 	id_depense_group	INTEGER NOT NULL REFERENCES DEPENSE_GROUP(id_depense_group) ON DELETE CASCADE
 );
@@ -50,7 +64,7 @@ CREATE TABLE DEPENSE (
 CREATE TABLE REVENU (
 	id_revenu	INTEGER PRIMARY KEY,
 	label		VARCHAR(24) NOT NULL,
-	valeur		REAL,
+	valeur		REAL DEFAULT 0,
 	ordre		INTEGER
 );
 

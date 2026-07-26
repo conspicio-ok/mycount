@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import ScreenHeader from '../components/ScreenHeader';
 import ExpandableBubble from '../components/ExpandableBubble';
 import Bubble from '../components/Bubble';
+import BottomSheet from '../components/BottomSheet';
+import { dumpDatabase, restoreDatabase } from '../utils/backup';
 import SummaryRow from '../components/SummaryRow';
 import EditableRow from '../components/EditableRow';
 import DepenseCategoryCard from '../components/DepenseCategoryCard';
@@ -12,11 +18,13 @@ import StatPill from '../components/StatPill';
 import { useDb } from '../db/DbContext';
 import {
 	getRevenus, addRevenu, updateRevenuLabel, updateRevenuValeur, updateRevenuOrdre, deleteRevenu, Revenu,
-	getDepenseGroups, addDepenseGroup, updateDepenseGroupLabel, updateDepenseGroupOrdre, deleteDepenseGroup, DepenseGroup,
-	getDepenses,
+	getDepenseGroups, addDepenseGroup, updateDepenseGroupLabel, updateDepenseGroupOrdre, updateDepenseGroupCouleur, deleteDepenseGroup, DepenseGroup,
+	getDepenses, getProfilsInvest, getActions,
 } from '../db/queries';
 import { colors } from '../theme';
 import { roundMoney } from '../utils/money';
+import { getMonthLabel } from '../utils/date';
+import { investMensuelEuros } from '../utils/invest';
 
 const CATEGORY_COLORS = ['7c5cd6', 'e08a3c', '3c8ae0', 'd6485c', '3ab08a'];
 
@@ -31,6 +39,9 @@ export default function HomeScreen() {
 	const [groups, setGroups] = useState<DepenseGroup[]>([]);
 	const [depenseTotals, setDepenseTotals] = useState<Record<number, number>>({});
 
+	const [investTotalMensuel, setInvestTotalMensuel] = useState(0);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+
 	async function loadRevenus() {
 		const list = await getRevenus(db);
 		setRevenus(list);
@@ -38,7 +49,18 @@ export default function HomeScreen() {
 	}
 
 	async function loadGroups() {
-		setGroups(await getDepenseGroups(db));
+		const list = await getDepenseGroups(db);
+		const sorted = [...list].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+		// +1 : la couleur 0 (colors.highlight) est déjà utilisée par la ligne "Investissement"
+		const corrected = await Promise.all(sorted.map(async (group, index) => {
+			const couleur = CATEGORY_COLORS[(index + 1) % CATEGORY_COLORS.length];
+			if (group.couleur !== couleur) {
+				await updateDepenseGroupCouleur(db, group.id_depense_group, couleur);
+				return { ...group, couleur };
+			}
+			return group;
+		}));
+		setGroups(corrected);
 	}
 
 	async function loadDepenseTotals() {
@@ -53,15 +75,85 @@ export default function HomeScreen() {
 		setDepenseTotals(totals);
 	}
 
-	useEffect(() => {
-		loadRevenus();
-		loadGroups();
-		loadDepenseTotals();
-	}, [])
+	async function loadInvestTotal() {
+		const profils = await getProfilsInvest(db);
+		const actions = await getActions(db);
+		const total = profils.reduce(
+			(sum, p) => sum + actions.filter((a) => a.id_profil_inv === p.id_profil_inv).reduce((s, a) => s + investMensuelEuros(a, p.style_acquisition), 0),
+			0
+		);
+		setInvestTotalMensuel(roundMoney(total));
+	}
+
+	useFocusEffect(
+		useCallback(() => {
+			loadRevenus();
+			loadGroups();
+			loadDepenseTotals();
+			loadInvestTotal();
+		}, [])
+	);
+
+	async function handleExport() {
+		setSettingsOpen(false);
+		try {
+			const data = await dumpDatabase(db);
+			const file = new File(Paths.cache, `mycount-backup-${Date.now()}.json`);
+			file.write(JSON.stringify(data, null, 2));
+			if (await Sharing.isAvailableAsync()) {
+				await Sharing.shareAsync(file.uri, { mimeType: 'application/json', dialogTitle: 'Exporter mes données' });
+			} else {
+				Alert.alert('Export', `Fichier écrit : ${file.uri}`);
+			}
+		} catch {
+			Alert.alert('Erreur', "L'export a échoué.");
+		}
+	}
+
+	async function reloadAll() {
+		await loadRevenus();
+		await loadGroups();
+		await loadDepenseTotals();
+		await loadInvestTotal();
+	}
+
+	async function handleImport() {
+		setSettingsOpen(false);
+		let data: unknown;
+		try {
+			const result = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
+			if (result.canceled) return;
+			data = JSON.parse(await new File(result.assets[0].uri).text());
+		} catch {
+			Alert.alert('Erreur', "Le fichier sélectionné n'est pas lisible.");
+			return;
+		}
+
+		Alert.alert(
+			'Importer ces données ?',
+			'Toutes les données actuelles seront remplacées par celles du fichier.',
+			[
+				{ text: 'Annuler', style: 'cancel' },
+				{
+					text: 'Importer',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							await restoreDatabase(db, data as Parameters<typeof restoreDatabase>[1]);
+							await reloadAll();
+							Alert.alert('Import réussi', 'Les données ont été restaurées.');
+						} catch {
+							Alert.alert('Erreur', "L'import a échoué — le fichier n'est probablement pas une sauvegarde valide.");
+						}
+					},
+				},
+			]
+		);
+	}
 
 	async function handleAddRevenu() {
 		const maxOrdre = revenus.reduce((max, r) => Math.max(max, r.ordre ?? -1), -1);
-		await addRevenu(db, 'Nouveau revenu', null, maxOrdre + 1);
+		await addRevenu(db, 'Nouveau revenu', 0, maxOrdre + 1);
 		await loadRevenus();
 	}
 
@@ -107,7 +199,7 @@ export default function HomeScreen() {
 
 	async function handleAddGroup() {
 		const maxOrdre = groups.reduce((max, g) => Math.max(max, g.ordre ?? -1), -1);
-		const couleur = CATEGORY_COLORS[groups.length % CATEGORY_COLORS.length];
+		const couleur = CATEGORY_COLORS[(groups.length + 1) % CATEGORY_COLORS.length];
 		await addDepenseGroup(db, 'Nouvelle catégorie', couleur, maxOrdre + 1);
 		await loadGroups();
 	}
@@ -117,10 +209,27 @@ export default function HomeScreen() {
 		updateDepenseGroupLabel(db, id, text);
 	}
 
-	async function handleRemoveGroup(id: number) {
-		await deleteDepenseGroup(db, id);
-		await loadGroups();
-		await loadDepenseTotals();
+	function handleRemoveGroup(id: number) {
+		Alert.alert(
+			'Supprimer cette catégorie ?',
+			'Toutes les dépenses de cette catégorie seront supprimées. Cette action est irréversible.',
+			[
+				{ text: 'Annuler', style: 'cancel' },
+				{
+					text: 'Supprimer',
+					style: 'destructive',
+					onPress: async () => {
+						try {
+							await deleteDepenseGroup(db, id);
+							await loadGroups();
+							await loadDepenseTotals();
+						} catch {
+							Alert.alert('Erreur', "La suppression a échoué.");
+						}
+					},
+				},
+			]
+		);
 	}
 
 	async function handleReorderGroups(data: DepenseGroup[]) {
@@ -130,8 +239,10 @@ export default function HomeScreen() {
 
 	const sortedGroups = [...groups].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
 	const totalDepenses = roundMoney(Object.values(depenseTotals).reduce((sum, v) => sum + v, 0));
-	const reste = roundMoney(totalRevenu - totalDepenses);
+	const reste = roundMoney(totalRevenu - totalDepenses - investTotalMensuel);
 	const revenusAnnuel = roundMoney(totalRevenu * 12);
+	const investAnnuel = roundMoney(investTotalMensuel * 12);
+	const tauxEpargne = totalRevenu > 0 ? roundMoney((investTotalMensuel / totalRevenu) * 100) : 0;
 
 	return (
 		<KeyboardAvoidingView
@@ -140,7 +251,7 @@ export default function HomeScreen() {
 			keyboardVerticalOffset={0}
 		>
 		<ScrollView contentContainerStyle={styles.container}>
-			<ScreenHeader monthLabel="Juillet 2026" title="Mon budget" />
+			<ScreenHeader monthLabel={getMonthLabel()} title="Mon budget" onSettingsPress={() => setSettingsOpen(true)} />
 
 			<ExpandableBubble
 				title="Revenus mensuels"
@@ -173,6 +284,11 @@ export default function HomeScreen() {
 			</ExpandableBubble>
 
 			<Bubble>
+				<SummaryRow
+					color={colors.highlight}
+					label="Investissement"
+					value={investTotalMensuel + ' €'}
+				/>
 				{sortedGroups.map((group) => (
 					<SummaryRow
 						key={group.id_depense_group}
@@ -186,11 +302,11 @@ export default function HomeScreen() {
 			<RestCard label="Reste" value={reste + ' €'} />
 
 			<View style={styles.pillRow}>
-				<StatPill label="Taux d'épargne" value="52%" />
+				<StatPill label="Taux d'épargne" value={tauxEpargne + '%'} />
 				<StatPill label="Dépenses / mois" value={totalDepenses + ' €'} />
 			</View>
 			<View style={styles.pillRow}>
-				<StatPill label="Investi / an" value="3 600 €" />
+				<StatPill label="Investi / an" value={investAnnuel + ' €'} />
 				<StatPill label="Revenus / an" value={revenusAnnuel + ' €'} />
 			</View>
 
@@ -223,6 +339,16 @@ export default function HomeScreen() {
 				}
 			/>
 		</ScrollView>
+
+		<BottomSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)}>
+			<Text style={styles.sheetTitle}>Réglages</Text>
+			<TouchableOpacity style={styles.settingsRow} onPress={handleExport}>
+				<Text style={styles.settingsRowText}>Exporter mes données</Text>
+			</TouchableOpacity>
+			<TouchableOpacity style={styles.settingsRow} onPress={handleImport}>
+				<Text style={styles.settingsRowText}>Importer des données</Text>
+			</TouchableOpacity>
+		</BottomSheet>
 		</KeyboardAvoidingView>
 	);
 }
@@ -267,5 +393,21 @@ const styles = StyleSheet.create({
 		fontSize: 14,
 		fontWeight: '600',
 		color: colors.textSecondary,
+	},
+	sheetTitle: {
+		fontSize: 20,
+		fontWeight: '700',
+		color: colors.textPrimary,
+		marginBottom: 12,
+	},
+	settingsRow: {
+		paddingVertical: 14,
+		borderBottomWidth: 1,
+		borderBottomColor: colors.divider,
+	},
+	settingsRowText: {
+		fontSize: 15,
+		fontWeight: '600',
+		color: colors.textPrimary,
 	},
 });

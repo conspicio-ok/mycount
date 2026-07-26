@@ -12,16 +12,17 @@ CREATE TABLE IF NOT EXISTS ACTION (
 	label			VARCHAR(24) NOT NULL,
 	ordre			INTEGER,
 	prix			REAL,
-	nb_part_acquis	REAL,
+	nb_part_acquis	REAL DEFAULT 0,
 	div				REAL,
-	prix_inv		REAL,
-	nb_inv			INTEGER,
+	prix_inv		REAL DEFAULT 0,
+	nb_inv			INTEGER DEFAULT 0,
 	id_profil_inv	INTEGER NOT NULL REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS BANNED (
 	id_banned	INTEGER PRIMARY KEY,
-	texte		VARCHAR(24) NOT NULL
+	label		VARCHAR(24) NOT NULL,
+	texte		TEXT
 );
 
 CREATE TABLE IF NOT EXISTS BILAN (
@@ -29,8 +30,25 @@ CREATE TABLE IF NOT EXISTS BILAN (
 	valeur			REAL,
 	gain			REAL,
 	date			DATE,
-	id_profil_inv	INTEGER NOT NULL REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE CASCADE,
+	-- label/couleur : copie de l'enveloppe au moment de la saisie, pour que l'historique
+	-- reste lisible même si l'enveloppe (PROFIL_INVEST) est supprimée par la suite
+	label			VARCHAR(24),
+	couleur			CHAR(6),
+	id_profil_inv	INTEGER REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE SET NULL,
 	UNIQUE (id_profil_inv, date)
+);
+
+CREATE TABLE IF NOT EXISTS PROJECTION (
+	id_projection	INTEGER PRIMARY KEY,
+	valeur			REAL,
+	gain			REAL,
+	annee			INTEGER,
+	-- label/couleur : copie de l'enveloppe au moment de l'enregistrement, pour que
+	-- l'historique reste lisible même si l'enveloppe (PROFIL_INVEST) est supprimée par la suite
+	label			VARCHAR(24),
+	couleur			CHAR(6),
+	id_profil_inv	INTEGER REFERENCES PROFIL_INVEST(id_profil_inv) ON DELETE SET NULL,
+	UNIQUE (id_profil_inv, annee)
 );
 
 CREATE TABLE IF NOT EXISTS DEPENSE_GROUP (
@@ -43,7 +61,7 @@ CREATE TABLE IF NOT EXISTS DEPENSE_GROUP (
 CREATE TABLE IF NOT EXISTS DEPENSE (
 	id_depense			INTEGER PRIMARY KEY,
 	label				VARCHAR(24) NOT NULL,
-	valeur				REAL,
+	valeur				REAL DEFAULT 0,
 	ordre				INTEGER,
 	id_depense_group	INTEGER NOT NULL REFERENCES DEPENSE_GROUP(id_depense_group) ON DELETE CASCADE
 );
@@ -51,7 +69,7 @@ CREATE TABLE IF NOT EXISTS DEPENSE (
 CREATE TABLE IF NOT EXISTS REVENU (
 	id_revenu	INTEGER PRIMARY KEY,
 	label		VARCHAR(24) NOT NULL,
-	valeur		REAL,
+	valeur		REAL DEFAULT 0,
 	ordre		INTEGER
 );
 
