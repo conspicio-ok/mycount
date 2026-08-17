@@ -2,7 +2,7 @@
 
 App mobile de comptabilité personnelle (budget, investissements). Stack : Expo (React Native, TypeScript), React Navigation, SQLite (via `expo-sqlite`) pour le stockage local.
 
-Reconstruction from scratch — logique redéfinie via MCD, l'ancien code n'est gardé que comme référence.
+Reconstruction from scratch — logique redéfinie via MCD, l'ancien code n'est gardé que comme référence. Version 1.0 : les quatre écrans (Accueil, Investir, Suivi, Projection) sont fonctionnels, avec sauvegarde/restauration locale.
 
 ## Structure
 
@@ -51,4 +51,4 @@ Un backend ne deviendra pertinent que si la synchronisation multi-appareils est 
 
 ## État
 
-MCD validé (2026-07-24). Prochaine étape : traduction en schéma SQLite, puis écrans (Accueil, Investir, Suivi, Projection).
+Version 1.0 (2026-07-28) : MCD validé, schéma SQLite en place, les quatre écrans (Accueil, Investir, Suivi, Projection) sont implémentés. Sauvegarde/restauration locale du fichier de données via `src/utils/backup.ts`. Build Android natif (`expo prebuild`) fonctionnel — APK debug/release générables via Gradle.

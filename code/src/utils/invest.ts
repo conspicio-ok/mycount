@@ -34,43 +34,13 @@ export function envelopeTauxGlobal(actions: Action[], profil: ProfilInvest, mois
 	return totalValAcq > 0 ? roundMoney((totalRendAn / totalValAcq) * 100) : 0;
 }
 
-// Gain (dividendes nets) projeté d'une enveloppe pour une année à `yearsFromNow` : pour
-// chaque position, projette le nombre de parts qu'elle aura acquises à cette échéance
-// (parts déjà acquises + achats mensuels × 12 × nb d'années) et calcule le dividende
-// annuel réel que ce nombre de parts rapporterait, net d'impôt.
-export function envelopeProjectedGain(actions: Action[], profil: ProfilInvest, moisByAction: Record<number, number[]>, yearsFromNow: number): number {
-	const positions = actions.filter((a) => a.id_profil_inv === profil.id_profil_inv);
-	let total = 0;
-	positions.forEach((a) => {
-		const monthlyShares = profil.style_acquisition === 'parts'
-			? (a.nb_inv ?? 0)
-			: ((a.prix ?? 0) > 0 ? (a.prix_inv ?? 0) / (a.prix as number) : 0);
-		const shares = (a.nb_part_acquis ?? 0) + monthlyShares * 12 * yearsFromNow;
-		const moisCount = (moisByAction[a.id_action] ?? []).length;
-		const dividendeAnnuel = shares * (a.div ?? 0) * moisCount;
-		total += dividendeAnnuel * (1 - (profil.taux ?? 0) / 100);
-	});
-	return roundMoney(total);
-}
-
-export function envelopeInvestAnnuel(actions: Action[], profil: ProfilInvest): number {
-	return roundMoney(
-		actions
-			.filter((a) => a.id_profil_inv === profil.id_profil_inv)
-			.reduce((sum, a) => sum + investMensuelEuros(a, profil.style_acquisition), 0) * 12
-	);
-}
-
-// Patrimoine cumulé réel (Suivi) par enveloppe : `valeur` sur un bilan est un montant investi
-// CE mois-là (un ajout), pas un solde — le patrimoine est donc la somme de tous les mois
-// (valeur + gain), pas la dernière ligne saisie.
-export function latestValeurByProfil(profils: ProfilInvest[], bilans: Bilan[]): Record<number, number> {
-	const result: Record<number, number> = {};
-	profils.forEach((p) => {
-		const history = bilans.filter((b) => b.id_profil_inv === p.id_profil_inv);
-		result[p.id_profil_inv] = roundMoney(history.reduce((sum, b) => sum + (b.valeur ?? 0) + (b.gain ?? 0), 0));
-	});
-	return result;
+// Nombre de parts achetées par mois pour une position, selon le style d'acquisition de
+// l'enveloppe : en "parts", nb_inv parts/mois directement ; en "montant", le montant investi
+// mensuel (prix_inv) converti en nombre de parts au prix unitaire actuel.
+function monthlySharesFor(action: Action, profil: ProfilInvest): number {
+	return profil.style_acquisition === 'parts'
+		? (action.nb_inv ?? 0)
+		: ((action.prix ?? 0) > 0 ? (action.prix_inv ?? 0) / (action.prix as number) : 0);
 }
 
 // Investi/gain réel d'une année civile pour une enveloppe, à partir des bilans mensuels de
@@ -108,9 +78,7 @@ function computeFutureMonthlyPoints(
 		let investi = 0;
 		let gain = 0;
 		positions.forEach((a) => {
-			const monthlyShares = profil.style_acquisition === 'parts'
-				? (a.nb_inv ?? 0)
-				: ((a.prix ?? 0) > 0 ? (a.prix_inv ?? 0) / (a.prix as number) : 0);
+			const monthlyShares = monthlySharesFor(a, profil);
 			if ((moisByAction[a.id_action] ?? []).includes(month)) {
 				gain += runningShares[a.id_action] * (a.div ?? 0) * (1 - (profil.taux ?? 0) / 100);
 			}

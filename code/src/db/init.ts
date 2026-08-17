@@ -138,10 +138,24 @@ export async function initDb()
 
     await db.execAsync(SCHEMA);
 
+    const toRebuild: FkTable[] = [];
     for (const fkTable of FK_TABLES) {
         if (await needsRebuild(db, fkTable)) {
+            toRebuild.push(fkTable);
+        }
+    }
+
+    if (toRebuild.length > 0) {
+        // Avec foreign_keys=ON, un DROP TABLE référencé déclenche un DELETE FROM implicite qui
+        // applique le ON DELETE des tables enfants (ex: ACTION -> VERSEMENT_DIV en CASCADE) —
+        // reconstruire ACTION viderait alors silencieusement VERSEMENT_DIV avant même d'arriver
+        // à sa propre reconstruction. Le pragma ne peut pas être changé dans une transaction,
+        // donc on le désactive ici, en dehors de celles de rebuildTable.
+        await db.execAsync('PRAGMA foreign_keys = OFF;');
+        for (const fkTable of toRebuild) {
             await rebuildTable(db, fkTable);
         }
+        await db.execAsync('PRAGMA foreign_keys = ON;');
     }
 
     return db;

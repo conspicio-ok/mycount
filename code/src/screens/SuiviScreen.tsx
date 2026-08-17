@@ -10,9 +10,8 @@ import {
 } from '../db/queries';
 import { colors, radius } from '../theme';
 import { roundMoney } from '../utils/money';
-import { latestValeurByProfil } from '../utils/invest';
+import { MONTH_LABELS_SHORT as MONTH_LABELS } from '../utils/date';
 
-const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jui', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 const ENV_COLORS = ['3c8ae0', 'e0b23c', '9c5cd6', '3ab08a', 'd6485c'];
 
 function monthDate(year: number, monthIndex: number): string {
@@ -143,16 +142,14 @@ export default function SuiviScreen() {
 		await loadBilans();
 	}
 
-	// Patrimoine cumulé par enveloppe active : `valeur` sur un bilan est un montant investi ce
-	// mois-là (pas un solde), donc le total est une somme de tous les mois, pas la dernière ligne.
-	const patrimoineByProfil = latestValeurByProfil(profils, bilans);
-	const valeurActuelle = roundMoney(profils.reduce((sum, p) => sum + (patrimoineByProfil[p.id_profil_inv] ?? 0), 0));
-
 	const monthTotalInvesti = roundMoney(rows.reduce((sum, r) => sum + (r.bilan?.valeur ?? 0), 0));
 	const monthTotalGain = roundMoney(rows.reduce((sum, r) => sum + (r.bilan?.gain ?? 0), 0));
 
+	// Sur TOUS les bilans, enveloppes supprimées ("fantômes") incluses : l'argent déjà investi
+	// dans une enveloppe depuis supprimée compte toujours dans le patrimoine réel.
 	const totalInvesti = roundMoney(bilans.reduce((sum, b) => sum + (b.valeur ?? 0), 0));
 	const gainTotal = roundMoney(bilans.reduce((sum, b) => sum + (b.gain ?? 0), 0));
+	const valeurActuelle = roundMoney(totalInvesti + gainTotal);
 	const recap = [
 		{ label: 'Total investi', value: totalInvesti + ' €' },
 		{ label: 'Gain total', value: gainTotal + ' €' },

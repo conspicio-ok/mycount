@@ -17,10 +17,10 @@ import {
 import { colors } from '../theme';
 import { roundMoney } from '../utils/money';
 import { computeRendNet, computeRendAn, investMensuelEuros, envelopeTauxGlobal } from '../utils/invest';
+import { MONTH_LABELS_SHORT as MONTH_LABELS } from '../utils/date';
 
 const ENV_COLORS = ['3c8ae0', 'e0b23c', '9c5cd6', '3ab08a', 'd6485c'];
 const COLOR_PALETTE = ['3c8ae0', 'e0b23c', '9c5cd6', '3ab08a', 'd6485c', 'e0763c', '4cb8c4', '808080'];
-const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jui', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export default function InvestScreen() {

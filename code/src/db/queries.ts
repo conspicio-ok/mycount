@@ -324,38 +324,5 @@ export async function deleteEmptyGhostBilans(db: SQLite.SQLiteDatabase): Promise
 	await db.runAsync('DELETE FROM BILAN WHERE id_profil_inv IS NULL AND valeur IS NULL AND gain IS NULL');
 }
 
-export type Projection = {
-	id_projection:	number;
-	valeur:			number | null;
-	gain:			number | null;
-	annee:			number;
-	label:			string | null; // copie de l'enveloppe au moment de l'enregistrement
-	couleur:		string | null;
-	id_profil_inv:	number | null; // null si l'enveloppe d'origine a été supprimée
-};
-
-export async function getProjections(db: SQLite.SQLiteDatabase): Promise<Projection[]> {
-	return db.getAllAsync<Projection>('SELECT * FROM PROJECTION ORDER BY annee');
-}
-
-export async function addProjection(
-	db: SQLite.SQLiteDatabase,
-	id_profil_inv: number,
-	annee: number,
-	valeur: number | null,
-	gain: number | null,
-	label: string,
-	couleur: string | null
-): Promise<number> {
-	const result = await db.runAsync(
-		'INSERT INTO PROJECTION (id_profil_inv, annee, valeur, gain, label, couleur) VALUES (?, ?, ?, ?, ?, ?)',
-		id_profil_inv, annee, valeur, gain, label, couleur
-	);
-	return result.lastInsertRowId;
-}
-
-export const updateProjectionValeur = (db: SQLite.SQLiteDatabase, id: number, valeur: number | null) =>
-	updateField(db, 'PROJECTION', 'id_projection', 'valeur', id, valeur);
-
-export const updateProjectionGain = (db: SQLite.SQLiteDatabase, id: number, gain: number | null) =>
-	updateField(db, 'PROJECTION', 'id_projection', 'gain', id, gain);
+// Note : la table PROJECTION existe encore en base (voir schema.ts) mais n'est plus utilisée —
+// Projection recalcule tout à la volée depuis BILAN (utils/invest.ts). Pas de CRUD JS pour elle.
