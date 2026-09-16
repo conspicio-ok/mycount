@@ -1,7 +1,9 @@
 .secrets
 .env
+.expo
 
 front/package-lock.json
+node_modules
 
 api/tmp
 data
