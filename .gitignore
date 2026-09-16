@@ -1,0 +1,7 @@
+.secrets
+.env
+
+front/package-lock.json
+
+api/tmp
+data
