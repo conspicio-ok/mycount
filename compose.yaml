@@ -1,0 +1,71 @@
+# Prod, lancement par défaut : docker compose up -d
+# Dev : docker compose -f compose.yaml -f compose.dev.yaml up
+# Variables lues dans l'environnement ou dans un fichier .env à côté de ce compose.
+
+name: mycount
+
+services:
+
+  back:
+    # Construite localement, ou tirée du registry quand MYCOUNT_REGISTRY est défini (CI/CD).
+    image: ${MYCOUNT_REGISTRY:-mycount}/api:${MYCOUNT_TAG:-latest}
+    build:
+      context: ./api
+      target: prod
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Paris
+      DB_PATH: /data/mycount.db
+      JWT_SECRET_FILE: /run/secrets/JWT_SECRET
+      # Cookies Secure : HTTPS, ou http://localhost. false seulement pour un accès HTTP par IP.
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      # Un proxy devant l'API (Caddy, ou Vite en dev) : l'IP du client est lue dans
+      # X-Forwarded-For. L'API n'expose aucun port, sinon l'en-tête pourrait être forgé.
+      TRUSTED_PROXY_HOPS: "1"
+    secrets:
+      - JWT_SECRET
+    volumes:
+      - data:/data
+    networks:
+      - mycount_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+
+  front:
+    image: ${MYCOUNT_REGISTRY:-mycount}/front:${MYCOUNT_TAG:-latest}
+    build:
+      context: ./front
+      target: prod
+    restart: unless-stopped
+    environment:
+      # Domaine → HTTPS automatique ; :80 → HTTP simple.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # Certificats et état de Caddy : les perdre redemanderait un certificat à chaque démarrage.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      back:
+        condition: service_healthy
+    networks:
+      - mycount_net
+
+secrets:
+  JWT_SECRET:
+    file: ./.secrets/JWT_SECRET
+
+volumes:
+  data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  mycount_net:

@@ -1,0 +1,13 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# -s -w : binaire sans table des symboles ni informations DWARF (plus léger, lien plus rapide).
+cmd = "go build -ldflags='-s -w' -o ./tmp/server ."
+bin = "./tmp/server"
+include_ext = ["go", "sql"]
+exclude_dir = ["tmp"]
+delay = 1000
+
+[log]
+time = false

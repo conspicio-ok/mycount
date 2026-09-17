@@ -1,0 +1,18 @@
+# SITE_ADDRESS : un domaine (mycount.example.com) → HTTPS automatique (Let's Encrypt) ;
+# :80 (défaut) → HTTP simple, pour un lancement local.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# Même chemin qu'en dev (proxy Vite) : /api/auth/login → back:8080/auth/login.
+	# Caddy pose X-Forwarded-For avec l'IP du client : TRUSTED_PROXY_HOPS=1 côté API.
+	handle_path /api/* {
+		reverse_proxy back:8080
+	}
+
+	# SPA : toute route inconnue retombe sur index.html, le routeur SvelteKit prend le relais.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

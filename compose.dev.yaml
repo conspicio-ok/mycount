@@ -1,0 +1,29 @@
+# Surcharge de dev, à charger après compose.yaml :
+#   docker compose -f compose.yaml -f compose.dev.yaml up
+# Pas nommé compose.override.yaml : chargé automatiquement, il ferait d'un simple
+# `docker compose up` un lancement de dev.
+
+services:
+
+  back:
+    image: mycount/api:dev
+    build:
+      target: dev
+    volumes: !override
+      - ./api:/app
+      - ./data:/data
+    healthcheck:
+      # Première compilation par air : bien plus longue qu'un démarrage de binaire.
+      start_period: 10m
+
+  front:
+    image: mycount/front:dev
+    build:
+      target: dev
+    environment:
+      API_URL: http://back:8080
+    volumes: !override
+      - ./front:/app
+      - /app/node_modules
+    ports: !override
+      - "5173:8080"
